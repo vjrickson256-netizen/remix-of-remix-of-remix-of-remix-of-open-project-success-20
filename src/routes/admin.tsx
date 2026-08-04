@@ -182,6 +182,7 @@ function AdminPage() {
         {active === "activities" && <ActivitiesPanel activities={activities} onClearAll={clearActivity} />}
         {active === "subscriptions" && <SubscriptionsPanel subscriptions={subscriptions} />}
         {active === "wallet" && <WalletPanel transactions={transactions} />}
+        {active === "settings" && <UploadBackendPanel />}
       </div>
     </div>
   );
