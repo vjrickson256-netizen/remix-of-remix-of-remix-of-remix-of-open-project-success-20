@@ -1,18 +1,22 @@
-import { auth } from "@/lib/firebase";
-
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
 const PART_SIZE = 64 * 1024 * 1024; // 64 MB per part → 5 GB = 80 parts
 const CONCURRENCY = 4;
 
+/** External R2 signing server (Railway). Uploads go browser → R2 directly. */
+const R2_API = (
+  (import.meta.env["VITE_R2_API_URL"] as string | undefined) ??
+  "https://function-bun-production-fc40.up.railway.app"
+).replace(/\/+$/, "");
+const UPLOAD_TOKEN = (import.meta.env["VITE_R2_UPLOAD_TOKEN"] as string | undefined) ?? "*";
+
 export type UploadFolder = "videos" | "audio" | "images";
 
 async function api<T>(action: string, body: unknown): Promise<T> {
-  const token = await auth.currentUser?.getIdToken();
-  const res = await fetch(`/api/r2/${action}`, {
+  const res = await fetch(`${R2_API}/uploads/${action}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      authorization: `Bearer ${UPLOAD_TOKEN}`,
     },
     body: JSON.stringify(body),
   });
