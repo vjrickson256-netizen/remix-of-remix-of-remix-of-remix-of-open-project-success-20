@@ -23,7 +23,6 @@ import { Route as SongRouteImport } from './routes/song'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as WatchIdRouteImport } from './routes/watch.$id'
-import { Route as ApiPayActionRouteImport } from './routes/api/pay/$action'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -95,11 +94,6 @@ const WatchIdRoute = WatchIdRouteImport.update({
   path: '/watch/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPayActionRoute = ApiPayActionRouteImport.update({
-  id: '/api/pay/$action',
-  path: '/api/pay/$action',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -116,7 +110,6 @@ export interface FileRoutesByFullPath {
   '/trending': typeof TrendingRoute
   '/watchlist': typeof WatchlistRoute
   '/watch/$id': typeof WatchIdRoute
-  '/api/pay/$action': typeof ApiPayActionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -133,7 +126,6 @@ export interface FileRoutesByTo {
   '/trending': typeof TrendingRoute
   '/watchlist': typeof WatchlistRoute
   '/watch/$id': typeof WatchIdRoute
-  '/api/pay/$action': typeof ApiPayActionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,7 +143,6 @@ export interface FileRoutesById {
   '/trending': typeof TrendingRoute
   '/watchlist': typeof WatchlistRoute
   '/watch/$id': typeof WatchIdRoute
-  '/api/pay/$action': typeof ApiPayActionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,7 +161,6 @@ export interface FileRouteTypes {
     | '/trending'
     | '/watchlist'
     | '/watch/$id'
-    | '/api/pay/$action'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -187,7 +177,6 @@ export interface FileRouteTypes {
     | '/trending'
     | '/watchlist'
     | '/watch/$id'
-    | '/api/pay/$action'
   id:
     | '__root__'
     | '/'
@@ -204,7 +193,6 @@ export interface FileRouteTypes {
     | '/trending'
     | '/watchlist'
     | '/watch/$id'
-    | '/api/pay/$action'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -222,7 +210,6 @@ export interface RootRouteChildren {
   TrendingRoute: typeof TrendingRoute
   WatchlistRoute: typeof WatchlistRoute
   WatchIdRoute: typeof WatchIdRoute
-  ApiPayActionRoute: typeof ApiPayActionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -325,13 +312,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WatchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/pay/$action': {
-      id: '/api/pay/$action'
-      path: '/api/pay/$action'
-      fullPath: '/api/pay/$action'
-      preLoaderRoute: typeof ApiPayActionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -350,7 +330,6 @@ const rootRouteChildren: RootRouteChildren = {
   TrendingRoute: TrendingRoute,
   WatchlistRoute: WatchlistRoute,
   WatchIdRoute: WatchIdRoute,
-  ApiPayActionRoute: ApiPayActionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
