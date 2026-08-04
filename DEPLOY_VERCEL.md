@@ -9,58 +9,42 @@ functions and all page routes are server-rendered — no rewrites file needed.
 Vercel → Add New → Project → import this repository. Leave the framework
 preset as "Other"; `vercel.json` supplies the build settings.
 
-## 2. Environment variables (Project → Settings → Environment Variables)
+## 2. Uploads run on an external R2 server (Railway)
 
-Required for uploads (Cloudflare R2):
+Uploads no longer touch Vercel. The browser asks the Railway signing server for
+presigned URLs and sends the bytes straight to Cloudflare R2, so no serverless
+function handles file data.
 
-| Name | Where to get it |
+Server: `https://function-bun-production-fc40.up.railway.app`
+(R2 credentials, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `UPLOAD_TOKEN`, and
+`ALLOWED_ORIGINS` are configured there, not on Vercel.)
+
+Optional Vercel/front-end overrides:
+
+| Name | Purpose |
 | --- | --- |
-| `R2_ACCOUNT_ID` | Cloudflare dashboard → R2 → Account ID |
-| `R2_ACCESS_KEY_ID` | R2 → Manage API Tokens → create token (Object Read & Write) |
-| `R2_SECRET_ACCESS_KEY` | shown once when the token is created |
-| `R2_BUCKET` | your bucket name |
-| `R2_PUBLIC_URL` | the bucket's public dev URL or custom domain, e.g. `https://cdn.calmaleng.net` |
+| `VITE_R2_API_URL` | point the app at a different signing server |
+| `VITE_R2_UPLOAD_TOKEN` | must match `UPLOAD_TOKEN` on that server |
 
 Also copy any Firebase/Mux/payment variables the app already uses.
 
-## 3. R2 bucket CORS (required — chunked uploads fail without it)
+## 3. R2 bucket CORS
 
-Cloudflare → R2 → your bucket → Settings → CORS Policy:
+`ExposeHeaders: ["ETag"]` is mandatory: the browser needs each part's ETag to
+complete the multipart upload. The current wide-open policy works:
 
 ```json
 [
   {
-    "AllowedOrigins": [
-      "https://sweet-bug-squasher.vercel.app",
-      "https://www.calmaleng.net",
-      "https://calmaleng.net",
-      "http://localhost:8080"
-    ],
+    "AllowedOrigins": ["*"],
     "AllowedMethods": ["GET", "PUT", "POST", "HEAD", "DELETE"],
-    "AllowedHeaders": [
-      "content-type",
-      "content-length",
-      "content-md5",
-      "authorization",
-      "x-amz-content-sha256",
-      "x-amz-date",
-      "x-amz-acl",
-      "x-amz-meta-*"
-    ],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag", "Content-Length", "Content-Type"],
+    "MaxAgeSeconds": 86400
   }
 ]
 ```
 
-`ExposeHeaders: ["ETag"]` is mandatory: the browser needs each part's ETag to
-complete the multipart upload.
-
-If using the Cloudflare form instead of JSON, add `ETag` in the separate
-**Expose headers** field. Putting `ETag` under **Allowed headers** is not
-equivalent and uploads will still fail. Include both the `www` and apex custom
-domains if visitors can open either one.
-
 ## 4. Public access
-Enable the bucket's public r2.dev URL or attach a custom domain, then set
-`R2_PUBLIC_URL` to it so uploaded videos are playable.
+Enable the bucket's public r2.dev URL or attach a custom domain and set
+`R2_PUBLIC_BASE_URL` on the Railway server so uploaded videos are playable.
