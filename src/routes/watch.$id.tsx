@@ -171,7 +171,7 @@ function WatchDetail({ movie }: { movie: MovieType }) {
    * buffering it in memory, so the user sees the native download UI/progress
    * and can pause, resume or cancel it like any other browser download.
    */
-  function handleDownload() {
+  async function handleDownload() {
     if (!requireSubscription()) return;
     const url = playbackUrl;
     if (!url) {
@@ -180,19 +180,29 @@ function WatchDetail({ movie }: { movie: MovieType }) {
     }
     const name = fileNameFor(url);
     logActivity("download", `Downloaded: ${movie.title}`);
-    // Route through our own endpoint so the response carries
-    // Content-Disposition: attachment — a cross-origin href would just open
-    // the file in a new tab instead of downloading it.
-    const href = `/api/public/download?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}`;
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = name;
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    toast.success("Download started — check your browser downloads");
-
+    // Fully client-side: fetch the file from the public bucket and hand the
+    // blob to the browser, so no server of ours is involved in downloads.
+    toast.info("Preparing download…");
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`File request failed (${res.status}).`);
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60_000);
+      toast.success("Download started — check your browser downloads");
+    } catch (err) {
+      console.error(err);
+      // Last resort: open the file directly so the user can still save it.
+      window.open(url, "_blank", "noopener");
+      toast.error("Could not download automatically — opened the file instead.");
+    }
   }
 
 
