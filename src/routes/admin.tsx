@@ -9,6 +9,7 @@ import {
   Music,
   Tv,
   Users,
+  Server,
   Wallet as WalletIcon,
 } from "lucide-react";
 import { useApp } from "@/store/app-store";
@@ -19,6 +20,7 @@ import { ContentPanel } from "@/components/admin/ContentPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
 import { ActivitiesPanel } from "@/components/admin/ActivitiesPanel";
 import { SubscriptionsPanel, WalletPanel } from "@/components/admin/BillingPanels";
+import { UploadBackendPanel } from "@/components/admin/UploadBackendPanel";
 import { isActive, useAdminUsers, useSubscriptions, useTransactions, walletBalance } from "@/lib/admin-data";
 
 export const Route = createFileRoute("/admin")({
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-type SectionKey = "overview" | "content" | "users" | "activities" | "subscriptions" | "wallet";
+type SectionKey = "overview" | "content" | "users" | "activities" | "subscriptions" | "wallet" | "settings";
 
 const sections: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "overview", label: "OVERVIEW", icon: <LayoutGrid className="size-3.5" /> },
@@ -43,6 +45,7 @@ const sections: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: "activities", label: "ACTIVITIES", icon: <Activity className="size-3.5" /> },
   { key: "subscriptions", label: "SUBSCRIPTIONS", icon: <CreditCard className="size-3.5" /> },
   { key: "wallet", label: "WALLET", icon: <WalletIcon className="size-3.5" /> },
+  { key: "settings", label: "SETTINGS", icon: <Server className="size-3.5" /> },
 ];
 
 function AdminPage() {
@@ -179,6 +182,7 @@ function AdminPage() {
         {active === "activities" && <ActivitiesPanel activities={activities} onClearAll={clearActivity} />}
         {active === "subscriptions" && <SubscriptionsPanel subscriptions={subscriptions} />}
         {active === "wallet" && <WalletPanel transactions={transactions} />}
+        {active === "settings" && <UploadBackendPanel />}
       </div>
     </div>
   );
