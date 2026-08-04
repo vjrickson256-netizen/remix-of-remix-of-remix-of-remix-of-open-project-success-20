@@ -25,7 +25,6 @@ import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as WatchIdRouteImport } from './routes/watch.$id'
 import { Route as ApiPayActionRouteImport } from './routes/api/pay/$action'
 import { Route as ApiPublicDownloadRouteImport } from './routes/api/public/download'
-import { Route as ApiR2ActionRouteImport } from './routes/api/r2/$action'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -107,11 +106,6 @@ const ApiPublicDownloadRoute = ApiPublicDownloadRouteImport.update({
   path: '/api/public/download',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiR2ActionRoute = ApiR2ActionRouteImport.update({
-  id: '/api/r2/$action',
-  path: '/api/r2/$action',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -130,7 +124,6 @@ export interface FileRoutesByFullPath {
   '/watch/$id': typeof WatchIdRoute
   '/api/pay/$action': typeof ApiPayActionRoute
   '/api/public/download': typeof ApiPublicDownloadRoute
-  '/api/r2/$action': typeof ApiR2ActionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -149,7 +142,6 @@ export interface FileRoutesByTo {
   '/watch/$id': typeof WatchIdRoute
   '/api/pay/$action': typeof ApiPayActionRoute
   '/api/public/download': typeof ApiPublicDownloadRoute
-  '/api/r2/$action': typeof ApiR2ActionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,7 +161,6 @@ export interface FileRoutesById {
   '/watch/$id': typeof WatchIdRoute
   '/api/pay/$action': typeof ApiPayActionRoute
   '/api/public/download': typeof ApiPublicDownloadRoute
-  '/api/r2/$action': typeof ApiR2ActionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,7 +181,6 @@ export interface FileRouteTypes {
     | '/watch/$id'
     | '/api/pay/$action'
     | '/api/public/download'
-    | '/api/r2/$action'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,7 +199,6 @@ export interface FileRouteTypes {
     | '/watch/$id'
     | '/api/pay/$action'
     | '/api/public/download'
-    | '/api/r2/$action'
   id:
     | '__root__'
     | '/'
@@ -228,7 +217,6 @@ export interface FileRouteTypes {
     | '/watch/$id'
     | '/api/pay/$action'
     | '/api/public/download'
-    | '/api/r2/$action'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,7 +236,6 @@ export interface RootRouteChildren {
   WatchIdRoute: typeof WatchIdRoute
   ApiPayActionRoute: typeof ApiPayActionRoute
   ApiPublicDownloadRoute: typeof ApiPublicDownloadRoute
-  ApiR2ActionRoute: typeof ApiR2ActionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -365,13 +352,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/r2/$action': {
-      id: '/api/r2/$action'
-      path: '/api/r2/$action'
-      fullPath: '/api/r2/$action'
-      preLoaderRoute: typeof ApiR2ActionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -392,18 +372,7 @@ const rootRouteChildren: RootRouteChildren = {
   WatchIdRoute: WatchIdRoute,
   ApiPayActionRoute: ApiPayActionRoute,
   ApiPublicDownloadRoute: ApiPublicDownloadRoute,
-  ApiR2ActionRoute: ApiR2ActionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

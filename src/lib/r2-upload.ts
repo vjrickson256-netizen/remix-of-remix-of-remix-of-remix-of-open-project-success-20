@@ -1,18 +1,22 @@
-import { auth } from "@/lib/firebase";
-
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
 const PART_SIZE = 64 * 1024 * 1024; // 64 MB per part → 5 GB = 80 parts
 const CONCURRENCY = 4;
 
+/** External R2 signing server (Railway). Uploads go browser → R2 directly. */
+const R2_API = (
+  (import.meta.env["VITE_R2_API_URL"] as string | undefined) ??
+  "https://function-bun-production-fc40.up.railway.app"
+).replace(/\/+$/, "");
+const UPLOAD_TOKEN = (import.meta.env["VITE_R2_UPLOAD_TOKEN"] as string | undefined) ?? "*";
+
 export type UploadFolder = "videos" | "audio" | "images";
 
 async function api<T>(action: string, body: unknown): Promise<T> {
-  const token = await auth.currentUser?.getIdToken();
-  const res = await fetch(`/api/r2/${action}`, {
+  const res = await fetch(`${R2_API}/uploads/${action}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      authorization: `Bearer ${UPLOAD_TOKEN}`,
     },
     body: JSON.stringify(body),
   });
@@ -60,7 +64,7 @@ export async function uploadToR2(
 ): Promise<string> {
   if (file.size > MAX_UPLOAD_BYTES) throw new Error("File is larger than the 5 GB limit.");
 
-  const { key, uploadId } = await api<{ key: string; uploadId: string }>("create", {
+  const { key, uploadId } = await api<{ key: string; uploadId: string; publicUrl: string }>("create", {
     filename: file.name,
     contentType: file.type || "application/octet-stream",
     size: file.size,
@@ -69,7 +73,7 @@ export async function uploadToR2(
 
   const totalParts = Math.max(1, Math.ceil(file.size / PART_SIZE));
   const loaded = new Array<number>(totalParts).fill(0);
-  const parts: { PartNumber: number; ETag: string }[] = [];
+  const parts: { partNumber: number; etag: string }[] = [];
   const report = () => {
     const done = loaded.reduce((a, b) => a + b, 0);
     opts.onProgress?.(Math.min(99, Math.round((done / file.size) * 100)), done);
@@ -83,12 +87,12 @@ export async function uploadToR2(
         if (batchStart > totalParts) return;
         next += 1;
         const partNumber = batchStart;
-        const { urls } = await api<{ urls: Record<string, string> }>("sign", {
+        const { urls } = await api<{ urls: { partNumber: number; url: string }[] }>("sign", {
           key,
           uploadId,
           partNumbers: [partNumber],
         });
-        const url = urls[String(partNumber)];
+        const url = urls.find((u) => u.partNumber === partNumber)?.url;
         if (!url) throw new Error("Could not sign upload chunk.");
         const blob = file.slice((partNumber - 1) * PART_SIZE, partNumber * PART_SIZE);
         const etag = await putPart(
@@ -102,15 +106,15 @@ export async function uploadToR2(
         );
         loaded[partNumber - 1] = blob.size;
         report();
-        parts.push({ PartNumber: partNumber, ETag: etag });
+        parts.push({ partNumber, etag });
       }
     };
 
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, totalParts) }, worker));
 
-    const { url } = await api<{ url: string }>("complete", { key, uploadId, parts });
+    const { publicUrl } = await api<{ publicUrl: string }>("complete", { key, uploadId, parts });
     opts.onProgress?.(100, file.size);
-    return url;
+    return publicUrl;
   } catch (err) {
     void api("abort", { key, uploadId }).catch(() => {});
     throw err;
