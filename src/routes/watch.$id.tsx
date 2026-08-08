@@ -180,13 +180,37 @@ function WatchDetail({ movie }: { movie: MovieType }) {
     }
     const name = fileNameFor(url);
     logActivity("download", `Downloaded: ${movie.title}`);
-    // Fully client-side: fetch the file from the public bucket and hand the
-    // blob to the browser, so no server of ours is involved in downloads.
-    toast.info("Preparing download…");
+    // Fully client-side. Video files are large (tens/hundreds of MB), so we
+    // stream them with visible progress instead of silently buffering.
+    const toastId = toast.loading("Starting download…");
     try {
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`File request failed (${res.status}).`);
-      const blob = await res.blob();
+      if (!res.ok || !res.body) throw new Error(`File request failed (${res.status}).`);
+      const total = Number(res.headers.get("content-length") || 0);
+      const reader = res.body.getReader();
+      const chunks: BlobPart[] = [];
+      let received = 0;
+      let lastTick = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value as unknown as BlobPart);
+          received += value.byteLength;
+          const now = Date.now();
+          if (now - lastTick > 400) {
+            lastTick = now;
+            const mb = (received / 1048576).toFixed(1);
+            toast.loading(
+              total
+                ? `Downloading… ${Math.round((received / total) * 100)}% (${mb} MB)`
+                : `Downloading… ${mb} MB`,
+              { id: toastId },
+            );
+          }
+        }
+      }
+      const blob = new Blob(chunks, { type: res.headers.get("content-type") || "video/mp4" });
       const href = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = href;
@@ -196,12 +220,19 @@ function WatchDetail({ movie }: { movie: MovieType }) {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(href), 60_000);
-      toast.success("Download started — check your browser downloads");
+      toast.success("Saved — check your browser downloads", { id: toastId });
     } catch (err) {
       console.error(err);
-      // Last resort: open the file directly so the user can still save it.
-      window.open(url, "_blank", "noopener");
-      toast.error("Could not download automatically — opened the file instead.");
+      // Last resort: hand the raw URL to the browser's own download manager.
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.info("Opened the file — use your browser's save option", { id: toastId });
     }
   }
 
