@@ -167,11 +167,10 @@ function WatchDetail({ movie }: { movie: MovieType }) {
   }
 
   /**
-   * Hands the file straight to the browser's own download manager instead of
-   * buffering it in memory, so the user sees the native download UI/progress
-   * and can pause, resume or cancel it like any other browser download.
+   * Hands the URL straight to the browser's native download manager so the
+   * download starts immediately with the browser's own progress UI.
    */
-  async function handleDownload() {
+  function handleDownload() {
     if (!requireSubscription()) return;
     const url = playbackUrl;
     if (!url) {
@@ -180,60 +179,24 @@ function WatchDetail({ movie }: { movie: MovieType }) {
     }
     const name = fileNameFor(url);
     logActivity("download", `Downloaded: ${movie.title}`);
-    // Fully client-side. Video files are large (tens/hundreds of MB), so we
-    // stream them with visible progress instead of silently buffering.
-    const toastId = toast.loading("Starting download…");
+    // Ask the origin to send Content-Disposition: attachment when supported
+    // (R2/S3 honours response-content-disposition on presigned/public GETs).
+    let href = url;
     try {
-      const res = await fetch(url);
-      if (!res.ok || !res.body) throw new Error(`File request failed (${res.status}).`);
-      const total = Number(res.headers.get("content-length") || 0);
-      const reader = res.body.getReader();
-      const chunks: BlobPart[] = [];
-      let received = 0;
-      let lastTick = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) {
-          chunks.push(value as unknown as BlobPart);
-          received += value.byteLength;
-          const now = Date.now();
-          if (now - lastTick > 400) {
-            lastTick = now;
-            const mb = (received / 1048576).toFixed(1);
-            toast.loading(
-              total
-                ? `Downloading… ${Math.round((received / total) * 100)}% (${mb} MB)`
-                : `Downloading… ${mb} MB`,
-              { id: toastId },
-            );
-          }
-        }
-      }
-      const blob = new Blob(chunks, { type: res.headers.get("content-type") || "video/mp4" });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = name;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 60_000);
-      toast.success("Saved — check your browser downloads", { id: toastId });
-    } catch (err) {
-      console.error(err);
-      // Last resort: hand the raw URL to the browser's own download manager.
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      a.target = "_blank";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      toast.info("Opened the file — use your browser's save option", { id: toastId });
+      const u = new URL(url, window.location.origin);
+      u.searchParams.set("response-content-disposition", `attachment; filename="${name}"`);
+      href = u.toString();
+    } catch {
+      /* keep the raw url */
     }
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success("Download started — check your browser downloads");
   }
 
 
