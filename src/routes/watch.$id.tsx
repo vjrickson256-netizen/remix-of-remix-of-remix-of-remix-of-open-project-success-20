@@ -104,6 +104,13 @@ function WatchDetail({ movie }: { movie: MovieType }) {
   const playerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.register("/download-sw.js", { scope: "/" }).catch((err) => {
+      console.error("Download service could not start", err);
+    });
+  }, []);
+
+  useEffect(() => {
     logActivity("watch", `Started watching: ${movie.title}`);
     setActiveSeason(1);
     setActiveEpisode(null);
@@ -166,11 +173,7 @@ function WatchDetail({ movie }: { movie: MovieType }) {
     return `${movie.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-")}${ext}`;
   }
 
-  /**
-   * Hands the URL straight to the browser's native download manager so the
-   * download starts immediately with the browser's own progress UI.
-   */
-  function handleDownload() {
+  async function handleDownload() {
     if (!requireSubscription()) return;
     const url = playbackUrl;
     if (!url) {
@@ -178,21 +181,24 @@ function WatchDetail({ movie }: { movie: MovieType }) {
       return;
     }
     const name = fileNameFor(url);
-    logActivity("download", `Downloaded: ${movie.title}`);
-    // Ask the origin to send Content-Disposition: attachment when supported
-    // (R2/S3 honours response-content-disposition on presigned/public GETs).
-    let href = url;
-    try {
-      const u = new URL(url, window.location.origin);
-      u.searchParams.set("response-content-disposition", `attachment; filename="${name}"`);
-      href = u.toString();
-    } catch {
-      /* keep the raw url */
+    if (!("serviceWorker" in navigator)) {
+      toast.error("Downloads are not supported by this browser.");
+      return;
     }
+
+    try {
+      await navigator.serviceWorker.register("/download-sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+    } catch {
+      toast.error("Could not start the download service. Refresh and try again.");
+      return;
+    }
+
+    logActivity("download", `Downloaded: ${movie.title}`);
+    const href = `/__download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(name)}`;
     const a = document.createElement("a");
     a.href = href;
     a.download = name;
-    a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     a.remove();
